@@ -1,4 +1,7 @@
-import idb from "idb"
+import idb from "idb";
+// import * as idb from 'idb';
+//import idb from '../node_modules/idb/lib';
+//import { UpgradeDB, DB, Transaction } from '../node_modules/idb/lib';
 
 let staticCacheId = "restaurants-static-v2";
 let urlsToCache = [

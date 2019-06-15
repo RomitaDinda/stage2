@@ -13,6 +13,7 @@ const babelify = require('babelify');
 const runSequence = require('gulp4-run-sequence').use(gulp);
 const wiredep = require('wiredep').stream;
 
+
 const $ = gulpLoadPlugins();
 const reload = browserSync.reload;
 const serverY = browserSync;
@@ -147,16 +148,6 @@ function html() {
     .pipe(dest('dist'));
 }
 
-gulp.task('fonts', () => {
-  return gulp
-    .src(
-      require('main-bower-files')('**/*.{eot,svg,ttf,woff,woff2}', function(
-        err
-      ) {}).concat('app/fonts/**/*')
-    )
-    .pipe($.if(devFlag, gulp.dest('.tmp/fonts'), gulp.dest('dist/fonts')));
-});
-
 gulp.task('images', () => {
   return gulp
     .src('app/img/**/*')
@@ -178,10 +169,10 @@ gulp.task('extras', () => {
 
 gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
 
-gulp.task('serve', () => {
+gulp.task('serve', done => {
   runSequence(
     ['clean', 'wiredep'],
-    ['html', 'css', 'js', 'dbhelper', 'sw', 'fonts'], () => {
+    ['html', 'css', 'js', 'dbhelper', 'sw'], () => {
       browserSync.init({
         notify: false,
         port: 8000,
@@ -198,17 +189,16 @@ gulp.task('serve', () => {
           'app/*.html',
           'app/images/**/*',
           'app/icons/**/*',
-          '.tmp/fonts/**/*'
         ])
         .on("change", reload);
 
-      gulp.watch('app/css/**/*.css', ['html', 'css']);
-      gulp.watch('app/js/**/*.js', ['html', 'js']); //"dbhelper"
-      gulp.watch('app/sw.js', ['sw']);
-      gulp.watch('app/fonts/**/*', ['fonts']);
-      gulp.watch('bower.json', ['wiredep', 'fonts']);
+      gulp.watch('app/css/**/*.css', gulp.series('html', 'css'));
+      gulp.watch('app/js/**/*.js', gulp.series('html', 'js', 'dbhelper')); //"dbhelper"
+      gulp.watch('app/sw.js', gulp.series('sw'));
+      gulp.watch('bower.json', gulp.series('wiredep'));
     }
   );
+  done();
 });
 
 gulp.task('serve:test', gulp.series('js', () => {
@@ -247,8 +237,7 @@ gulp.task('serve:dist', gulp.series('default', () => {
   });
 }));
 
-// inject bower components
-gulp.task('wiredep', () => {
+gulp.task('wiredep', done => {
   gulp
     .src('app/*.html')
     .pipe(
@@ -257,11 +246,12 @@ gulp.task('wiredep', () => {
       })
     )
     .pipe(gulp.dest('app'));
+    done();
 });
 
 gulp.task(
   'build',
-  gulp.series('lint', 'html', 'images', 'icons', 'fonts', 'extras',
+  gulp.series('lint', 'html', 'images', 'icons', 'extras',
   () => {
     return gulp.src('dist/**/*').pipe($.size({ title: 'build', gzip: true }));
   }
@@ -273,7 +263,8 @@ function measureSize() {
 }
 
 // Clean output directory
-gulp.task('clean', function () {
+gulp.task('clean', done => {
   del(['tmp/*', 'dist/*']);
+  done();
 });
 

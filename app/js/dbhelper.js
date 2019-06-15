@@ -1,6 +1,27 @@
 /**
  * Common database helper functions.
  */
+import idb from "idb";
+
+let fetchedCuisines;
+let fetchedNeighborhoods;
+const dbPromise = idb.open("rbc-udacity-restaurant", 1, upgradeDB => {
+  switch (upgradeDB.oldVersion) {
+    case 0:
+      upgradeDB.createObjectStore("restaurants", {keyPath: "id"});
+    case 1:
+      {
+        const reviewsStore = upgradeDB.createObjectStore("reviews", {keyPath: "id"});
+        reviewsStore.createIndex("restaurant_id", "restaurant_id");
+      }
+    case 2:
+      upgradeDB.createObjectStore("pending", {
+        keyPath: "id",
+        autoIncrement: true
+      });
+  }
+});
+
 class DBHelper {
 
   /**
@@ -9,7 +30,11 @@ class DBHelper {
    */
   static get DATABASE_URL() {
     const port = 1337;
-    return `http://localhost:${port}/data/restaurants`;
+    return `http://localhost:${port}/restaurants`;
+  }
+  static get DATABASE_REVIEWS_URL() {
+    const port = 1337; 
+    return `http://localhost:${port}/reviews`;
   }
 
   /**
@@ -30,11 +55,22 @@ class DBHelper {
       .then(response => {
         response.json().then(restaurants => {
           console.log('restaurants in JSON', restaurants);
+            if (restaurants.length) {
+            // Get all neighborhoods from all restaurants
+            const neighborhoods = restaurants.map((v, i) => restaurants[i].neighborhood);
+            // Remove duplicates from neighborhoods
+            fetchedNeighborhoods = neighborhoods.filter((v, i) => neighborhoods.indexOf(v) == i);
+
+            // Get all cuisines from all restaurants
+            const cuisines = restaurants.map((v, i) => restaurants[i].cuisine_type);
+            // Remove duplicates from cuisines
+            fetchedCuisines = cuisines.filter((v, i) => cuisines.indexOf(v) == i);
+          }
           callback(null, restaurants);
         });
       })
       .catch(error => {
-        callback(`Requesr failed. Returned ${error}`, null);
+        callback(`Request failed. Returned ${error}`, null);
       });
   }
 
@@ -56,6 +92,8 @@ class DBHelper {
       }
     });
   }
+
+// FALTA fetchRestaurantReviewsById
 
   /**
    * Fetch restaurants by a cuisine type with proper error handling.

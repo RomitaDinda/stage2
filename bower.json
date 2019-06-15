@@ -11,8 +11,10 @@
     "worker",
     "performance"
   ],
-    "private": true,
-  "dependencies": {},
+  "private": true,
+  "dependencies": {
+    "jquery": "^3.4.1"
+  },
   "devDependencies": {
     "chai": "^4.1.2",
     "mocha": "^5.1.1"
