@@ -1,27 +1,6 @@
 /**
  * Common database helper functions.
  */
-import idb from "idb";
-
-let fetchedCuisines;
-let fetchedNeighborhoods;
-const dbPromise = idb.open("rbc-udacity-restaurant", 1, upgradeDB => {
-  switch (upgradeDB.oldVersion) {
-    case 0:
-      upgradeDB.createObjectStore("restaurants", {keyPath: "id"});
-    case 1:
-      {
-        const reviewsStore = upgradeDB.createObjectStore("reviews", {keyPath: "id"});
-        reviewsStore.createIndex("restaurant_id", "restaurant_id");
-      }
-    case 2:
-      upgradeDB.createObjectStore("pending", {
-        keyPath: "id",
-        autoIncrement: true
-      });
-  }
-});
-
 class DBHelper {
 
   /**
@@ -29,49 +8,32 @@ class DBHelper {
    * Change this to restaurants.json file location on your server.
    */
   static get DATABASE_URL() {
-    const port = 1337;
+    const port = 1337; // Change this to your server port
     return `http://localhost:${port}/restaurants`;
   }
-  static get DATABASE_REVIEWS_URL() {
-    const port = 1337; 
-    return `http://localhost:${port}/reviews`;
-  }
+
+
 
   /**
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback, id) {
-    // let xhr = new XMLHttpRequest();
     let fetchURL;
     if (!id) {
       fetchURL = DBHelper.DATABASE_URL;
-    } 
-    else
-    {
-      fetchURL = DBHelper.DATABASE_URL + '/' + id;
+    } else {
+      fetchURL = DBHelper.DATABASE_URL + "/" + id;
     }
 
-    fetch(fetchURL, { method: 'GET'})
-      .then(response => {
-        response.json().then(restaurants => {
-          console.log('restaurants in JSON', restaurants);
-            if (restaurants.length) {
-            // Get all neighborhoods from all restaurants
-            const neighborhoods = restaurants.map((v, i) => restaurants[i].neighborhood);
-            // Remove duplicates from neighborhoods
-            fetchedNeighborhoods = neighborhoods.filter((v, i) => neighborhoods.indexOf(v) == i);
-
-            // Get all cuisines from all restaurants
-            const cuisines = restaurants.map((v, i) => restaurants[i].cuisine_type);
-            // Remove duplicates from cuisines
-            fetchedCuisines = cuisines.filter((v, i) => cuisines.indexOf(v) == i);
-          }
+    fetch(fetchURL, {method: 'GET'}).then(response => {
+      response.json()
+        .then(restaurants => {
+          console.log('restaurants JSON: ', restaurants);
           callback(null, restaurants);
         });
-      })
-      .catch(error => {
-        callback(`Request failed. Returned ${error}`, null);
-      });
+    }).catch(error => {
+      callback(`Request failed. Returned the following error: ${error}`, null);
+    });
   }
 
   /**
@@ -92,8 +54,6 @@ class DBHelper {
       }
     });
   }
-
-// FALTA fetchRestaurantReviewsById
 
   /**
    * Fetch restaurants by a cuisine type with proper error handling.

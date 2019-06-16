@@ -78,7 +78,6 @@ gulp.task('sw', () => {
     .pipe(gulp.dest('.tmp/'));
 });
 
-
 const lintBase = files => {
   return src(files)
     .pipe($.eslint({ fix: true }))
@@ -219,6 +218,30 @@ gulp.task('serve:test', gulp.series('js', () => {
   gulp.watch(['test/spec/**/*.js', 'test/index.html']).on('change', reload);
   gulp.watch('test/spec/**/*.js', ['lint:test']);
 }));
+
+gulp.task('mainhtmlserve', () => {
+  return gulp
+    .src("app/index.html")
+    .pipe(
+      replace("<!-- Styles Placeholder -->", function(s) {
+        var style =
+          fs.readFileSync("app/css/basestyles.css", "utf8") +
+          fs.readFileSync("app/css/mainstyles.css", "utf8");
+        return "<style>" + style + "</style>";
+      })
+    )
+    .pipe(
+      replace("<!-- JS Placeholder -->", function(s) {
+        var script =
+          fs.readFileSync("app/js/register.js", "utf8") +
+          fs.readFileSync("app/js/dbhelper.js", "utf8") +
+          fs.readFileSync("app/js/main.js");
+        return "<script>" + script + "</script>";
+      })
+    )
+    .pipe(minify())
+    .pipe(gulp.dest(".tmp/"));
+});
 
 gulp.task('default', () => {
   return new Promise(resolve => {
