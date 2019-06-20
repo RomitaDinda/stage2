@@ -1,220 +1,238 @@
 // generated on 2019-06-17 using generator-webapp 4.0.0-5
-const { src, dest, watch, series, parallel, lastRun } = require('gulp');
-const gulpLoadPlugins = require('gulp-load-plugins');
-const fs = require('fs');
-const mkdirp = require('mkdirp');
-const Modernizr = require('modernizr');
-const browserSync = require('browser-sync');
+var gulp = require('gulp');
+var babelify = require('babelify');
+var browserify = require('browserify');
+var source = require('vinyl-source-stream');
+var buffer = require('vinyl-buffer');
+var uglify = require('gulp-uglify');
+var sourcemaps = require('gulp-sourcemaps');
+var browserSync = require('browser-sync').create();
+var sass = require('gulp-sass');
+var image = require('gulp-image');
+const imagemin = require('gulp-imagemin');
+const imageminMozjpeg = require('imagemin-mozjpeg');
 const del = require('del');
 const autoprefixer = require('autoprefixer');
-const cssnano = require('cssnano');
-const { argv } = require('yargs');
+const rename = require('gulp-rename');
+const runSequence = require('gulp4-run-sequence').use(gulp);
+const gulpLoadPlugins = require('gulp-load-plugins');
 
+const reload = browserSync.reload;
 const $ = gulpLoadPlugins();
-const server = browserSync.create();
 
-const port = argv.port || 8000;
+let dev = true;
 
-const isProd = process.env.NODE_ENV === 'production';
-const isTest = process.env.NODE_ENV === 'test';
-const isDev = !isProd && !isTest;
+// CSS
+gulp.task("css", function () {
+  return gulp
+    .src("app/css/*.css")
+    .pipe($.if(dev, $.sourcemaps.init()))
+    .pipe($.if(dev, $.sourcemaps.write()))
+    .pipe(gulp.dest('.tmp/css'))
+    .pipe(reload({ stream: true }));
+});
 
-function styles() {
-  return src('app/styles/*.scss')
+gulp.task("js", () => {
+  return gulp
+    .src(["app/js/**/*.js", "!app/js/**/dbhelper.js"])
     .pipe($.plumber())
-    .pipe($.if(!isProd, $.sourcemaps.init()))
-    .pipe($.sass.sync({
-      outputStyle: 'expanded',
-      precision: 10,
-      includePaths: ['.']
-    }).on('error', $.sass.logError))
-    .pipe($.postcss([
-      autoprefixer()
-    ]))
-    .pipe($.if(!isProd, $.sourcemaps.write()))
-    .pipe(dest('.tmp/styles'))
-    .pipe(server.reload({stream: true}));
-};
-
-function scripts() {
-  return src('app/scripts/**/*.js')
-    .pipe($.plumber())
-    .pipe($.if(!isProd, $.sourcemaps.init()))
+    .pipe($.if(dev, $.sourcemaps.init()))
     .pipe($.babel())
-    .pipe($.if(!isProd, $.sourcemaps.write('.')))
-    .pipe(dest('.tmp/scripts'))
-    .pipe(server.reload({stream: true}));
-};
+    .pipe($.if(dev, $.sourcemaps.write(".")))
+    .pipe(gulp.dest(".tmp/js"))
+    .pipe(reload({ stream: true }));
+});
 
-async function modernizr() {
-  const readConfig = () => new Promise((resolve, reject) => {
-    fs.readFile(`${__dirname}/modernizr.json`, 'utf8', (err, data) => {
-      if (err) reject(err);
-      resolve(JSON.parse(data));
-    })
-  })
-  const createDir = () => new Promise((resolve, reject) => {
-    mkdirp(`${__dirname}/.tmp/scripts`, err => {
-      if (err) reject(err);
-      resolve();
-    })
-  });
-  const generateScript = config => new Promise((resolve, reject) => {
-    Modernizr.build(config, content => {
-      fs.writeFile(`${__dirname}/.tmp/scripts/modernizr.js`, content, err => {
-        if (err) reject(err);
-        resolve(content);
-      });
-    })
+gulp.task("sw", () => {
+  const b = browserify({
+    debug: true
   });
 
-  const [config] = await Promise.all([
-    readConfig(),
-    createDir()
-  ]);
-  await generateScript(config);
-}
+  return b
+    .transform(babelify)
+    .require("app/sw.js", { entry: true })
+    .bundle()
+    .pipe(source("sw.js"))
+    .pipe(gulp.dest(".tmp/"));
+});
 
-const lintBase = files => {
-  return src(files)
-    .pipe($.eslint({ fix: true }))
-    .pipe(server.reload({stream: true, once: true}))
+gulp.task("dbhelper", () => {
+  const b = browserify({
+    debug: true
+  });
+
+  return b
+    .transform(babelify)
+    .require("app/js/dbhelper.js", { entry: true })
+    .bundle()
+    .pipe(source("dbhelper.js"))
+    .pipe(gulp.dest(".tmp/js/"));
+});
+
+function lint(files) {
+  return gulp
+    .src(files)
+    .pipe($.eslint({ fix: false }))
+    .pipe(reload({ stream: true, once: true }))
     .pipe($.eslint.format())
-    .pipe($.if(!server.active, $.eslint.failAfterError()));
-}
-function lint() {
-  return lintBase('app/scripts/**/*.js')
-    .pipe(dest('app/scripts'));
-};
-function lintTest() {
-  return lintBase('test/spec/**/*.js')
-    .pipe(dest('test/spec'));
-};
-
-function html() {
-  return src('app/*.html')
-    .pipe($.useref({searchPath: ['.tmp', 'app', '.']}))
-    .pipe($.if(/\.js$/, $.uglify({compress: {drop_console: true}})))
-    .pipe($.if(/\.css$/, $.postcss([cssnano({safe: true, autoprefixer: false})])))
-    .pipe($.if(/\.html$/, $.htmlmin({
-      collapseWhitespace: true,
-      minifyCSS: true,
-      minifyJS: {compress: {drop_console: true}},
-      processConditionalComments: true,
-      removeComments: true,
-      removeEmptyAttributes: true,
-      removeScriptTypeAttributes: true,
-      removeStyleLinkTypeAttributes: true
-    })))
-    .pipe(dest('dist'));
+    .pipe($.if(!browserSync.active, $.eslint.failAfterError()));
 }
 
-function images() {
-  return src('app/images/**/*', { since: lastRun(images) })
-    .pipe($.imagemin())
-    .pipe(dest('dist/images'));
-};
+gulp.task("lint", () => {
+  return lint("app/js/**/*.js").pipe(gulp.dest("app/js"));
+});
+gulp.task("lint:test", () => {
+  return lint("test/spec/**/*.js").pipe(gulp.dest("test/spec"));
+});
 
-function fonts() {
-  return src('app/fonts/**/*.{eot,svg,ttf,woff,woff2}')
-    .pipe($.if(!isProd, dest('.tmp/fonts'), dest('dist/fonts')));
-};
-
-function extras() {
-  return src([
-    'app/*',
-    '!app/*.html'
-  ], {
-    dot: true
-  }).pipe(dest('dist'));
-};
-
-function clean() {
-  return del(['.tmp', 'dist'])
-}
-
-function measureSize() {
-  return src('dist/**/*')
-    .pipe($.size({title: 'build', gzip: true}));
-}
-
-const build = series(
-  clean,
-  parallel(
-    lint,
-    series(parallel(styles, scripts, modernizr), html),
-    images,
-    fonts,
-    extras
-  ),
-  measureSize
+gulp.task("html", gulp.series("css", done => {
+  return gulp
+    .src("app/*.html")
+    .pipe($.useref({ searchPath: [".tmp", "app", "."] }))
+    .pipe($.if(/\.js$/, $.uglify({ compress: { drop_console: true } })))
+    //.pipe($.if(/\.css$/, $.cssnano({ safe: true, autoprefixer: false })))
+    .pipe(
+      $.if(
+        /\.html$/,
+        $.htmlmin({
+          collapseWhitespace: true,
+          minifyCSS: true,
+          minifyJS: { compress: { drop_console: true } },
+          processConditionalComments: true,
+          removeComments: true,
+          removeEmptyAttributes: true,
+          removeScriptTypeAttributes: true,
+          removeStyleLinkTypeAttributes: true
+        })
+      )
+    )
+    .pipe(gulp.dest(".tmp"))
+    .pipe(gulp.dest("dist"));
+    done();
+})
 );
 
-function startAppServer() {
-  server.init({
-    notify: false,
-    port,
-    server: {
-      baseDir: ['.tmp', 'app'],
-      routes: {
-        '/node_modules': 'node_modules'
-      }
+gulp.task("imagemin", done => {
+  gulp.src("app/img/**/*.*")
+    .pipe(imagemin([
+            imageminMozjpeg({
+                quality: 50
+            })
+        ], {
+      verbose: true
+    }))
+    .pipe(gulp.dest(".tmp/img"))
+    .pipe(gulp.dest("dist/img"));
+    done();
+});
+
+gulp.task("icons", () => {
+  return gulp.src("app/icons/**/*")
+  .pipe(gulp.dest(".tmp/icons"))
+  .pipe(gulp.dest("dist/icons"));
+});
+
+gulp.task("fonts", () => {
+  return gulp
+    .src(
+      require("main-bower-files")("**/*.{eot,svg,ttf,woff,woff2}", function(
+        err
+      ) {}).concat("app/fonts/**/*")
+    )
+    .pipe($.if(dev, gulp.dest(".tmp/fonts"), gulp.dest("dist/fonts")));
+});
+
+gulp.task("extras", () => {
+  return gulp
+    .src(["app/*", "!app/*.html"], {
+      dot: true
+    })
+    .pipe(gulp.dest("dist"));
+});
+
+gulp.task("clean", del.bind(null, [".tmp", "dist"]));
+
+gulp.task("watch", done => {
+  gulp.watch("app/js/**/*.js", gulp.series("js", "dbhelper"));
+  gulp.watch("app/sw.js", gulp.series("sw"));
+  gulp.watch('app/*.html').on('change', browserSync.reload);
+  gulp.watch("app/css/**/*.css", gulp.series("css"));
+  gulp.watch("app/fonts/**/*", gulp.series("fonts"));
+  done();
+});
+
+gulp.task("serve", () => {
+  runSequence(
+    ["clean"],
+    ["imagemin"],
+    ["lint", "html", "js", "dbhelper", "sw", "icons", "fonts", "extras"],
+    () => {
+      browserSync.init({
+        notify: false,
+        port: 8001,
+        server: {
+          baseDir: [".tmp"]
+        }
+      });
+    gulp.watch("app/js/**/*.js", gulp.series("js", "dbhelper"));
+    gulp.watch("app/sw.js", gulp.series("sw"));
+    gulp.watch('app/*.html').on('change', browserSync.reload);
+    gulp.watch("app/css/**/*.css", gulp.series("css"));
+    gulp.watch("app/fonts/**/*", gulp.series("fonts"));
     }
-  });
+  );
+});
 
-  watch([
-    'app/*.html',
-    'app/images/**/*',
-    '.tmp/fonts/**/*'
-  ]).on('change', server.reload);
-
-  watch('app/styles/**/*.scss', styles);
-  watch('app/scripts/**/*.js', scripts);
-  watch('modernizr.json', modernizr);
-  watch('app/fonts/**/*', fonts);
-}
-
-function startTestServer() {
-  server.init({
+gulp.task("serve:test", gulp.series("js", done => {
+  browserSync.init({
     notify: false,
-    port,
+    port: 9000,
     ui: false,
     server: {
-      baseDir: 'test',
+      baseDir: "test",
       routes: {
-        '/scripts': '.tmp/scripts',
-        '/node_modules': 'node_modules'
+        "/js": ".tmp/js",
+        "/bower_components": "bower_components"
       }
     }
   });
 
-  watch('app/scripts/**/*.js', scripts);
-  watch(['test/spec/**/*.js', 'test/index.html']).on('change', server.reload);
-  watch('test/spec/**/*.js', lintTest);
-}
+  gulp.watch("app/js/**/*.js", ["js"]);
+  gulp.watch(["test/spec/**/*.js", "test/index.html"]).on("change", reload);
+  gulp.watch("test/spec/**/*.js", ["lint:test"]);
+  done();
+}));
 
-function startDistServer() {
-  server.init({
+// clear out all files and folders from build folder
+gulp.task('build:cleanfolder', done => {
+  del.bind(null, ["dist"]);
+  done();
+});
+
+
+// task to create build directory for all files
+gulp.task("build:copy", function() {
+  return gulp.src("app/**/*/")
+  .pipe(gulp.dest("dist/"));
+});
+
+
+gulp.task("build", gulp.series("build:cleanfolder", "build:copy"), () => {
+    return gulp.src("dist/**/*").pipe($.size({ title: "build", gzip: true }));
+  });
+
+gulp.task("default", gulp.series( "build", "serve", done => {
+    dev = false;
+    done();
+  }));
+
+gulp.task("serve:dist", gulp.series("default", done => {
+  browserSync.init({
     notify: false,
-    port,
+    port: 9000,
     server: {
-      baseDir: 'dist',
-      routes: {
-        '/node_modules': 'node_modules'
-      }
+      baseDir: ["dist"]
     }
   });
-}
-
-let serve;
-if (isDev) {
-  serve = series(clean, parallel(styles, scripts, modernizr, fonts), startAppServer);
-} else if (isTest) {
-  serve = series(clean, scripts, startTestServer);
-} else if (isProd) {
-  serve = series(build, startDistServer);
-}
-
-exports.serve = serve;
-exports.build = build;
-exports.default = build;
+  done();
+}));

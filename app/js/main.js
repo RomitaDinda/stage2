@@ -179,8 +179,8 @@ createRestaurantHTML = (restaurant) => {
 
   const more = document.createElement('a');
     more.setAttribute(
-    "aria-label",
-    restaurant.name + ", " + restaurant.neighborhood
+    'aria-label',
+    restaurant.name + ', ' + restaurant.neighborhood
   );
   more.innerHTML = 'View Details';
   more.href = DBHelper.urlForRestaurant(restaurant);
@@ -196,7 +196,7 @@ addMarkersToMap = (restaurants = self.restaurants) => {
   restaurants.forEach(restaurant => {
     // Add marker to the map
     const marker = DBHelper.mapMarkerForRestaurant(restaurant, self.newMap);
-    marker.on("click", onClick);
+    marker.on('click', onClick);
     function onClick() {
       window.location.href = marker.options.url;
     }
