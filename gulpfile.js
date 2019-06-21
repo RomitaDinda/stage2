@@ -23,97 +23,68 @@ const $ = gulpLoadPlugins();
 let dev = true;
 
 // CSS
-gulp.task("css", function () {
+gulp.task('css', function () {
   return gulp
-    .src("app/css/*.css")
+    .src('app/css/*.css')
     .pipe($.if(dev, $.sourcemaps.init()))
     .pipe($.if(dev, $.sourcemaps.write()))
-    .pipe(gulp.dest('.tmp/css'))
+    .pipe(gulp.dest('dist/css'))
     .pipe(reload({ stream: true }));
 });
 
-gulp.task("js", () => {
-  return gulp
-    .src(["app/js/**/*.js", "!app/js/**/dbhelper.js"])
-    .pipe($.plumber())
-    .pipe($.if(dev, $.sourcemaps.init()))
-    .pipe($.babel())
-    .pipe($.if(dev, $.sourcemaps.write(".")))
-    .pipe(gulp.dest(".tmp/js"))
-    .pipe(reload({ stream: true }));
+gulp.task('styles', function() {
+  return gulp.src('app/sass/**/*.scss')
+    .pipe(sass({
+      outputStyle: 'compressed'
+    }).on('error', sass.logError))
+    .pipe(gulp.dest('app/css'))
+    .pipe(browserSync.stream());
 });
 
-gulp.task("sw", () => {
-  const b = browserify({
-    debug: true
-  });
-
-  return b
-    .transform(babelify)
-    .require("app/sw.js", { entry: true })
+gulp.task('scripts-index', done => {
+  browserify(['app/js/main.js', 'app/js/dbhelper.js', 'app/js/register.js', 'app/sw.js'])
+    .transform(babelify.configure({
+      presets: ['@babel/preset-env']
+    }))
     .bundle()
-    .pipe(source("sw.js"))
-    .pipe(gulp.dest(".tmp/"));
-});
-
-gulp.task("dbhelper", () => {
-  const b = browserify({
-    debug: true
-  });
-
-  return b
-    .transform(babelify)
-    .require("app/js/dbhelper.js", { entry: true })
-    .bundle()
-    .pipe(source("dbhelper.js"))
-    .pipe(gulp.dest(".tmp/js/"));
-});
-
-function lint(files) {
-  return gulp
-    .src(files)
-    .pipe($.eslint({ fix: false }))
-    .pipe(reload({ stream: true, once: true }))
-    .pipe($.eslint.format())
-    .pipe($.if(!browserSync.active, $.eslint.failAfterError()));
-}
-
-gulp.task("lint", () => {
-  return lint("app/js/**/*.js").pipe(gulp.dest("app/js"));
-});
-gulp.task("lint:test", () => {
-  return lint("test/spec/**/*.js").pipe(gulp.dest("test/spec"));
-});
-
-gulp.task("html", gulp.series("css", done => {
-  return gulp
-    .src("app/*.html")
-    .pipe($.useref({ searchPath: [".tmp", "app", "."] }))
-    .pipe($.if(/\.js$/, $.uglify({ compress: { drop_console: true } })))
-    //.pipe($.if(/\.css$/, $.cssnano({ safe: true, autoprefixer: false })))
-    .pipe(
-      $.if(
-        /\.html$/,
-        $.htmlmin({
-          collapseWhitespace: true,
-          minifyCSS: true,
-          minifyJS: { compress: { drop_console: true } },
-          processConditionalComments: true,
-          removeComments: true,
-          removeEmptyAttributes: true,
-          removeScriptTypeAttributes: true,
-          removeStyleLinkTypeAttributes: true
-        })
-      )
-    )
-    .pipe(gulp.dest(".tmp"))
-    .pipe(gulp.dest("dist"));
+    .pipe(source('index.min.js'))
+    .pipe(buffer())
+    .pipe(sourcemaps.init())
+    .pipe(uglify())
+    .pipe(sourcemaps.write('maps')) // You need this if you want to continue using the stream with other plugins
+    .pipe(gulp.dest('app/bundle_js'))
+    .pipe(gulp.dest('dist/bundle_js'));
     done();
-})
-);
+});
 
-gulp.task("imagemin", done => {
-  gulp.src("app/img/**/*.*")
+gulp.task('scripts-restaurant', done => {
+  browserify(['app/js/restaurant_info.js', 'app/js/dbhelper.js', 'app/js/register.js', 'app/sw.js'])
+    .transform(babelify.configure({
+      presets: ['@babel/preset-env']
+    }))
+    .bundle()
+    .pipe(source('restaurant.min.js'))
+    .pipe(buffer())
+    .pipe(sourcemaps.init())
+    .pipe(uglify())
+    .pipe(sourcemaps.write('maps')) // You need this if you want to continue using the stream with other plugins
+    .pipe(gulp.dest('app/bundle_js'))
+    .pipe(gulp.dest('dist/bundle_js'));
+    done();
+});
+
+gulp.task('watch', done => {
+  gulp.watch(['app/sw.js', 'app/js/**/*.js'], gulp.series('scripts-index', 'scripts-restaurant'));
+  done();
+});
+
+gulp.task('copy-files', () => {
+  return gulp.src(['app/index.html', 'app/restaurant.html', 'manifest.json'])
+    .pipe(gulp.dest('dist'));
+});
+
+gulp.task('imagemin', done => {
+  gulp.src('app/img/**/*.*')
     .pipe(imagemin([
             imageminMozjpeg({
                 quality: 50
@@ -121,118 +92,37 @@ gulp.task("imagemin", done => {
         ], {
       verbose: true
     }))
-    .pipe(gulp.dest(".tmp/img"))
-    .pipe(gulp.dest("dist/img"));
+    .pipe(gulp.dest('dist/img'))
+    .pipe(gulp.dest('app/img'));
     done();
 });
 
-gulp.task("icons", () => {
-  return gulp.src("app/icons/**/*")
-  .pipe(gulp.dest(".tmp/icons"))
-  .pipe(gulp.dest("dist/icons"));
-});
-
-gulp.task("fonts", () => {
-  return gulp
-    .src(
-      require("main-bower-files")("**/*.{eot,svg,ttf,woff,woff2}", function(
-        err
-      ) {}).concat("app/fonts/**/*")
-    )
-    .pipe($.if(dev, gulp.dest(".tmp/fonts"), gulp.dest("dist/fonts")));
-});
-
-gulp.task("extras", () => {
-  return gulp
-    .src(["app/*", "!app/*.html"], {
-      dot: true
-    })
-    .pipe(gulp.dest("dist"));
-});
-
-gulp.task("clean", del.bind(null, [".tmp", "dist"]));
-
-gulp.task("watch", done => {
-  gulp.watch("app/js/**/*.js", gulp.series("js", "dbhelper"));
-  gulp.watch("app/sw.js", gulp.series("sw"));
-  gulp.watch('app/*.html').on('change', browserSync.reload);
-  gulp.watch("app/css/**/*.css", gulp.series("css"));
-  gulp.watch("app/fonts/**/*", gulp.series("fonts"));
-  done();
-});
-
-gulp.task("serve", () => {
-  runSequence(
-    ["clean"],
-    ["imagemin"],
-    ["lint", "html", "js", "dbhelper", "sw", "icons", "fonts", "extras"],
-    () => {
-      browserSync.init({
-        notify: false,
-        port: 8001,
-        server: {
-          baseDir: [".tmp"]
-        }
-      });
-    gulp.watch("app/js/**/*.js", gulp.series("js", "dbhelper"));
-    gulp.watch("app/sw.js", gulp.series("sw"));
-    gulp.watch('app/*.html').on('change', browserSync.reload);
-    gulp.watch("app/css/**/*.css", gulp.series("css"));
-    gulp.watch("app/fonts/**/*", gulp.series("fonts"));
-    }
-  );
-});
-
-gulp.task("serve:test", gulp.series("js", done => {
-  browserSync.init({
-    notify: false,
-    port: 9000,
-    ui: false,
-    server: {
-      baseDir: "test",
-      routes: {
-        "/js": ".tmp/js",
-        "/bower_components": "bower_components"
+gulp.task('serve', 
+  gulp.series('scripts-restaurant', () => {
+    browserSync.init({
+      notify: false,
+      port: 8000,
+      server: {
+        baseDir: ["app"]
       }
-    }
-  });
-
-  gulp.watch("app/js/**/*.js", ["js"]);
-  gulp.watch(["test/spec/**/*.js", "test/index.html"]).on("change", reload);
-  gulp.watch("test/spec/**/*.js", ["lint:test"]);
-  done();
+    });
+  gulp.watch('app/sass/**/*.scss', gulp.series('styles'));
+  gulp.watch('app/**/**.html').on('change', browserSync.reload);
+  gulp.watch('app/bundle_js/**/*.js').on('change', browserSync.reload);
 }));
 
-// clear out all files and folders from build folder
-gulp.task('build:cleanfolder', done => {
-  del.bind(null, ["dist"]);
-  done();
-});
-
-
-// task to create build directory for all files
-gulp.task("build:copy", function() {
-  return gulp.src("app/**/*/")
-  .pipe(gulp.dest("dist/"));
-});
-
-
-gulp.task("build", gulp.series("build:cleanfolder", "build:copy"), () => {
-    return gulp.src("dist/**/*").pipe($.size({ title: "build", gzip: true }));
-  });
-
-gulp.task("default", gulp.series( "build", "serve", done => {
-    dev = false;
-    done();
-  }));
-
-gulp.task("serve:dist", gulp.series("default", done => {
+gulp.task("serve:dist", () => {
   browserSync.init({
     notify: false,
     port: 9000,
     server: {
-      baseDir: ["dist"]
+      baseDir: ["dist/app"]
     }
   });
-  done();
-}));
+});
+
+gulp.task("clean", del.bind(null, ["app/bundle_js", "dist"]));
+
+gulp.task('dist', gulp.series('clean', 'copy-files', 'imagemin', 'styles', 'scripts-index', 'scripts-restaurant'));
+gulp.task('default', gulp.series('clean', 'copy-files', 'css', 'imagemin', 'scripts-index', 'scripts-restaurant', 'watch', 'serve'));
+//gulp.task('default', gulp.series('serve'));
