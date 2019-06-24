@@ -18,9 +18,9 @@ Once you have these dependencies installed and the API server is started, do the
 
 In the terminal, navigate to this project folder.
 
-run npm install to install project dependencies.
+run npm install to install project dependencies. You can opcionally also execute npm i. If bower gives you problem install it too.
 
-run gulp serve.
+run gulp. This will run default tasks which make a dist build but also update all files
 
 With your server running, visit the site: http://localhost:8000 and explore some restaurants.
 
