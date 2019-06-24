@@ -7,7 +7,7 @@ var map;
  */
 window.initMap = () => {
   fetchRestaurantFromURL((error, data) => {
-    if (error) { // Got an error!
+    if (error) { 
       console.error(error);
     } else {
       map = new google.maps.Map(document.getElementById('map'), {
@@ -25,16 +25,18 @@ window.initMap = () => {
  * Get current restaurant from page URL.
  */
 var fetchRestaurantFromURL = (callback) => {
-  if (restaurant) { // restaurant already fetched!
+  if (restaurant) { 
     callback(null, restaurant)
     return;
   }
   const id = getParameterByName('id');
-  if (!id) { // no id found in URL
+  if (!id) { 
     error = 'No restaurant id in URL'
+    console.log(error);
     callback(error, null);
   } else {
     DBHelper.fetchRestaurantById(id, (error, data) => {
+      console('trying to retrieve info from restaurant', data);
       restaurant = data;
       if (!data) {
         console.error(error);

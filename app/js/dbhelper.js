@@ -24,12 +24,10 @@ class DBHelper {
   /**
    * Show cached restaurants stored in IDB
    */
-  static getCachedMessages(){
+  static getFromCache(){
     dbPromise = DBHelper.openDatabase();
     return dbPromise.then(function(db){
-
-      //if we showing posts or very first time of the page loading.
-      //we don't need to go to idb
+      // if no db initialized
       if(!db) return;
 
       var tx = db.transaction('restaurants');
@@ -43,14 +41,13 @@ class DBHelper {
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback) {
-    DBHelper.getCachedMessages().then(function(data){
+    DBHelper.getFromCache().then(function(data){
       // if we have data to show then we pass it immediately.
       if(data.length > 0){
         return callback(null , data);
       }
 
-      // After passing the cached messages.
-      // We need to update the cache with fetching restaurants from network.
+      // fetching restaurants from network.
       fetch(DBHelper.DATABASE_URL , {credentials:'same-origin'})
       .then(res => {
         console.log('res fetched is: ', res);
@@ -59,8 +56,6 @@ class DBHelper {
         dbPromise.then(function(db){
           if(!db) return db;
           console.log('data fetched is: ', data);
-
-
           var tx = db.transaction('restaurants' , 'readwrite');
           var store = tx.objectStore('restaurants');
 

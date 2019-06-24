@@ -83,7 +83,7 @@ section {
 
 #footer {
   background-color: #444;
-  color: #aaa;
+  color: #e8e3e3;
   font-size: 1.1em;
   letter-spacing: 1px;
   padding: 25px;
@@ -160,7 +160,7 @@ nav h1 a:hover {
 .filter-options {
   width: 100%;
   align-items: center;
-  background-color: #3397DB;
+  background-color: #2c5a96;
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -246,7 +246,7 @@ nav h1 a:hover {
 }
 
 #restaurants-list li h1 {
-  color: #f18200;
+  color: #c76e05;
   font-family: Arial,sans-serif;
   font-weight: 100;
   letter-spacing: 0;
@@ -267,9 +267,9 @@ nav h1 a:hover {
 }
 
 #restaurants-list li a {
-  background-color: orange;
+  background-color: #cc8505;
   border-bottom: 3px solid #eee;
-  color: #fff;
+  color: #231e1e;
   display: inline-block;
   font-size: 0.6em;
   margin: 15px 0 0;

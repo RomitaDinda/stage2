@@ -28,20 +28,24 @@
     <section>
       <div class="filter-options">
         <h2 tabindex="0" id="filter">Filter by:</h2>
-        <label for="neighborhoods-select">Select Neighborhood</label>
-        <select id="neighborhoods-select" name="neighborhoods" onchange="updateRestaurants()">
+        <label id="neighborhoods-label">
+        Select Neighborhood
+        </label>
+        <select id="neighborhoods-select" name="neighborhoods" onchange="updateRestaurants()" aria-labelledby="neighborhoods-label">>
           <option value="all">All Neighborhoods</option>
         </select>
-        <label for="cuisines-select">Select Cuisine</label>
-        <select id="cuisines-select" name="cuisines" onchange="updateRestaurants()">
-          <option value="all">All Cuisines</option>
-        </select>
+        <label id="cuisines-label">Select Cuisine</label>
+          <select id="cuisines-select" name="cuisines" onchange="updateRestaurants()" aria-labelledby="cuisines-label">
+            <option value="all">All Cuisines</option>
+          </select>
       </div>
       <ul id="restaurants-list"></ul>
     </section>
   </main>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdT13qA8BnDvyA5TfNAhNzKnN0eDZD0bg&libraries=places&callback=initMap"></script>
+<!-- the google-api-key below is mine but it was giving me problems for loading the map
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCmd_URxW2vfn5FycAOiQyN7j1a7qdf5Cg&libraries=places&callback=initMap"></script>
- <!-- Service Worker Registration -->
+  Service Worker Registration -->
   <script type="application/javascript" src="bundle_js/index.min.js"></script>
 
 

@@ -40,23 +40,22 @@ self.addEventListener("install", event => {
     caches
       .open(staticCacheId)
       .then(function (cache) {
-        console.log('Opened cache');
+        console.log("Opened cache");
         return cache.addAll(urlsToCache);
       })
       .then(self.skipWaiting())
   );
 });
 
-self.addEventListener('fetch', function(event){
+self.addEventListener("fetch", function(event){
   var requestUrl = new URL(event.request.url);
-  console.log('the url port is:' + requestUrl.port);
+  console.log("the url port is:" + requestUrl.port);
 
-  if (requestUrl.pathname.startsWith('/restaurants/')) {
-    console.log('entro al api de restaurants');
+  if (requestUrl.pathname.startsWith("/restaurants/")) {
     return;
   }
 
-  if(requestUrl.pathname.startsWith('/img/')){
+  if(requestUrl.pathname.startsWith("/img/")){
     // console.log('sw entro al img');
     event.respondWith(loadPhoto(event.request));
     return;
@@ -67,8 +66,8 @@ self.addEventListener('fetch', function(event){
       return cache.match(event.request).then(function (response) {
         return response || fetch(event.request).then(function(response) {
           // filter out browser-sync resources
-          if (!fetchResponse.url.includes('browser-sync')) {
-            console.log('response no browsersync');
+          if (!fetchResponse.url.includes("browser-sync")) {
+            console.log("response no browsersync");
             cache.put(event.request, response.clone());
           }
           return response;
@@ -79,14 +78,14 @@ self.addEventListener('fetch', function(event){
   );
 });
 
-self.addEventListener('activate', function(event) {
+self.addEventListener("activate", function(event) {
 
   event.waitUntil(
     // Get all the cache keys 
     caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames.filter(function(cacheName) {
-          return cacheName.startsWith('restaurants-') &&
+          return cacheName.startsWith("restaurants-") &&
                  !allCaches.includes(cacheName);
         }).map(function(cacheName) {
           return caches.delete(cacheName);
