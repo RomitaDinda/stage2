@@ -1,11 +1,19 @@
+//import DBHelper from './js/dbhelper';
+
 let staticCacheId = "restaurants-static-v2";
+let imgCache = "restaurants-imgs";
+
+let allCaches = [
+  staticCacheId,
+  imgCache
+];
+
 let urlsToCache = [
   "./",
-  "./register.js",
+  "js/register.js",
   "index.html",  
   "restaurant.html",
   "css/styles.css",
-  "data/restaurants.json",
   "js/dbhelper.js",
   "js/main.js",
   "js/restaurant_info.js",
@@ -19,7 +27,12 @@ let urlsToCache = [
   "img/8.jpg",
   "img/9.jpg",
   "img/10.jpg",
-  "img/nocon.png"
+  "img/nocon.png",
+  "icons/icon-72x72.png",
+  'bundle_js/index.min.js',
+  'bundle_js/maps/index.min.js.map',
+  'bundle_js/maps/restaurants.min.js.map',
+  'bundle_js/restaurants.min.js',
 ];
 
 self.addEventListener("install", event => {
@@ -34,30 +47,65 @@ self.addEventListener("install", event => {
   );
 });
 
-self.addEventListener("fetch", event => {
-  if (event.request.url.startsWith(self.location.origin)) {
-    event.respondWith(
-      caches.match(event.request).then(response => {
-        if (response) {
-          console.log('fetch at first');
-          return response;
-        }
-        console.log('get fetch from fetch');
-        return fetch(event.request);
-      }).catch(function () { return caches.match("/img/nocon.png");})//catch(function () { return new Response("Oh oh it failed");})
-    );
+self.addEventListener('fetch', function(event){
+  var requestUrl = new URL(event.request.url);
+  console.log('the url port is:' + requestUrl.port);
+
+  if (requestUrl.pathname.startsWith('/restaurants/')) {
+    console.log('entro al api de restaurants');
+    return;
   }
+
+  if(requestUrl.pathname.startsWith('/img/')){
+    // console.log('sw entro al img');
+    event.respondWith(loadPhoto(event.request));
+    return;
+  }
+
+  event.respondWith(
+    caches.open(staticCacheId).then(function(cache) {
+      return cache.match(event.request).then(function (response) {
+        return response || fetch(event.request).then(function(response) {
+          // filter out browser-sync resources
+          if (!fetchResponse.url.includes('browser-sync')) {
+            console.log('response no browsersync');
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        });
+      }).catch(function () { return caches.match("/img/nocon.png");
+        });
+    })
+  );
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => Promise.all(cacheNames.map(cache => {
-      if (cache !== staticCacheId) {
-        console.log("[ServiceWorker] removing cached files from ", cache);
-        return caches.delete(cache);
-      }
-    })))
-  )
-})
+self.addEventListener('activate', function(event) {
 
+  event.waitUntil(
+    // Get all the cache keys 
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.filter(function(cacheName) {
+          return cacheName.startsWith('restaurants-') &&
+                 !allCaches.includes(cacheName);
+        }).map(function(cacheName) {
+          return caches.delete(cacheName);
+        })
+      );
+    })
+  ); 
+});
+
+function loadPhoto(request){
+  return caches.open(imgCache).then(function(cache) {
+    return cache.match(request).then(function(response) {
+      if (response) return response;
+
+      return fetch(request).then(function(networkResponse) {
+        cache.put(request, networkResponse.clone());
+        return networkResponse;
+      });
+    });
+  });
+}
 

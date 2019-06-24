@@ -63,7 +63,7 @@ gulp.task('scripts-restaurant', done => {
       presets: ['@babel/preset-env']
     }))
     .bundle()
-    .pipe(source('restaurant.min.js'))
+    .pipe(source('restaurants.min.js'))
     .pipe(buffer())
     .pipe(sourcemaps.init())
     .pipe(uglify())
@@ -79,7 +79,7 @@ gulp.task('watch', done => {
 });
 
 gulp.task('copy-files', () => {
-  return gulp.src(['app/index.html', 'app/restaurant.html', 'manifest.json'])
+  return gulp.src(['app/index.html', 'app/restaurant.html', 'app/manifest.json'])
     .pipe(gulp.dest('dist'));
 });
 
@@ -97,13 +97,45 @@ gulp.task('imagemin', done => {
     done();
 });
 
+gulp.task('dbhelper', () => {
+  const b = browserify({
+    debug: true
+  });
+
+  return b
+    .transform(babelify)
+    .require('app/js/dbhelper.js', { entry: true })
+    .bundle()
+    .pipe(source('dbhelper.js'))
+    .pipe(gulp.dest('./'))
+    .pipe(gulp.dest('dist/js'));
+});
+
+gulp.task('sw', () => {
+  const b = browserify({
+    debug: true
+  });
+
+  return b
+    .transform(babelify)
+    .require('app/sw.js', { entry: true })
+    .bundle()
+    .pipe(source('sw.js'))
+    .pipe(gulp.dest('./'))
+    .pipe(gulp.dest("dist"));
+});
+
+gulp.task('icons', () => {
+  return gulp.src('app/icons/**/*').pipe(gulp.dest('dist/icons'));
+});
+
 gulp.task('serve', 
-  gulp.series('scripts-restaurant', () => {
+  gulp.series(() => {
     browserSync.init({
       notify: false,
       port: 8000,
       server: {
-        baseDir: ["app"]
+        baseDir: ['app']
       }
     });
   gulp.watch('app/sass/**/*.scss', gulp.series('styles'));
@@ -121,8 +153,8 @@ gulp.task("serve:dist", () => {
   });
 });
 
-gulp.task("clean", del.bind(null, ["app/bundle_js", "dist"]));
+gulp.task('clean', del.bind(null, ['app/bundle_js', 'dist']));
 
-gulp.task('dist', gulp.series('clean', 'copy-files', 'imagemin', 'styles', 'scripts-index', 'scripts-restaurant'));
-gulp.task('default', gulp.series('clean', 'copy-files', 'css', 'imagemin', 'scripts-index', 'scripts-restaurant', 'watch', 'serve'));
+gulp.task('dist', gulp.series('clean', 'copy-files', 'imagemin', 'icons', 'styles', 'scripts-index', 'scripts-restaurant'));
+gulp.task('default', gulp.series('clean', 'scripts-index', 'scripts-restaurant', 'copy-files', 'css', 'imagemin', 'icons', 'watch', 'serve'));
 //gulp.task('default', gulp.series('serve'));
